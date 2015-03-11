@@ -15,6 +15,10 @@ gpio.open(16, "output", function(err) {		// Open pin 16 for output
 
 ## Pin configuration
 
+You can use the physical numbering:
+
+![Odroid pins](http://cdn.overclock.net/b/b6/b6755fac_ss2014-12-27at05.02.37.png)
+
 ## Requirement: gpio-admin
 
 The GPIO pins require you to be root to access them. That's totally unsafe for several reasons. To get around this problem, you should use the excellent [gpio-admin](https://github.com/quick2wire/quick2wire-gpio-admin).
