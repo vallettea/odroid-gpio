@@ -1,0 +1,32 @@
+{
+  "author": "Alexandre Vallette <vallettea@gmail.com>",
+  "name": "odroid-gpio",
+  "description": "A simple node.js-based GPIO helper for the Odroid c1",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:vallettea/odroid-gpio.git"
+  },
+  "homepage": "https://github.com/vallettea/odroid-gpio",
+  "main": "./odroid-gpio",
+  "bugs": {
+    "url": "https://github.com/vallettea/odroid-gpio/issues"
+  },
+  "tags": [
+    "odroid",
+    "gpio",
+    "simple"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "1.x",
+    "should": "1.x"
+  },
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec"
+  }
+}
