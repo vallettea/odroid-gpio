@@ -134,7 +134,7 @@ var gpio = {
 	close: function(pinNumber, callback) {
 		pinNumber = sanitizePinNumber(pinNumber);
 
-		handleExecResponse("close", pinNumber, callback || noop));
+		handleExecResponse("close", pinNumber, callback || noop);
 	},
 
 	read: function(pinNumber, callback) {
