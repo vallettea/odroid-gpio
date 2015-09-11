@@ -3,9 +3,6 @@ var fs = require("fs"),
 	path = require("path"),
 	exec = require("child_process").exec;
 
-var gpioAdmin = "gpio-admin",
-	sysFsPath = "/sys/devices/virtual/gpio";
-
 var board = fs.readFileSync("/proc/cpuinfo").toString().split("\n").filter(function(line) {
 	return line.indexOf("Hardware") == 0;
 })[0].split(":")[1].trim();
@@ -110,11 +107,11 @@ var gpio = {
 
 		options = sanitizeOptions(options);
 
-		exec(gpioAdmin + " export " + pinMapping[pinNumber] + " " + options.pull, handleExecResponse("open", pinNumber, function(err) {
+		handleExecResponse("open", pinNumber, function(err) {
 			if (err) return (callback || noop)(err);
 
 			gpio.setDirection(pinNumber, options.direction, callback);
-		}));
+		});
 	},
 
 	setDirection: function(pinNumber, direction, callback) {
@@ -137,7 +134,7 @@ var gpio = {
 	close: function(pinNumber, callback) {
 		pinNumber = sanitizePinNumber(pinNumber);
 
-		exec(gpioAdmin + " unexport " + pinMapping[pinNumber], handleExecResponse("close", pinNumber, callback || noop));
+		handleExecResponse("close", pinNumber, callback || noop));
 	},
 
 	read: function(pinNumber, callback) {
