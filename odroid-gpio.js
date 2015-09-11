@@ -2,6 +2,8 @@
 var fs = require("fs"),
 	path = require("path"),
 	exec = require("child_process").exec;
+	
+var sysFsPath = "/sys/devices/virtual/gpio";
 
 var board = fs.readFileSync("/proc/cpuinfo").toString().split("\n").filter(function(line) {
 	return line.indexOf("Hardware") == 0;
