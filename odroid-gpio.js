@@ -1,161 +1,187 @@
 "use strict";
+
+require('es6-shim');
+
 var fs = require("fs"),
-	path = require("path"),
-	exec = require("child_process").exec;
-	
+    path = require("path"),
+    exec = require("child_process").exec;
+
 var sysFsPath = "/sys/devices/virtual/gpio";
 
 var board = fs.readFileSync("/proc/cpuinfo").toString().split("\n").filter(function(line) {
-	return line.indexOf("Hardware") == 0;
+    return line.indexOf("Hardware") == 0;
 })[0].split(":")[1].trim();
 
 if (board !== 'ODROIDC'){
-	console.log("This board is not an Odroid-C1, problems might occur.");
+    console.log("This board is not an Odroid-C1, problems might occur.");
 }
 
 var pinMapping = {
-	"7": 83,
-	"11": 88,
-	"12": 87,
-	"13": 116,
-	"15": 115,
-	"16": 104,
-	"18": 102,
-	"22": 103,
-	"26": 118,
-	"29": 101,
-	"31": 100,
-	"32": 99,
-	"33": 108,
-	"35": 97,
-	"36": 98
+    "7": 83,
+    "11": 88,
+    "12": 87,
+    "13": 116,
+    "15": 115,
+    "16": 104,
+    "18": 102,
+    "22": 103,
+    "26": 118,
+    "29": 101,
+    "31": 100,
+    "32": 99,
+    "33": 108,
+    "35": 97,
+    "36": 98
 };
 
+function execPromise(str) {
+    return new Promise(function (resolve, reject) {
+        exec(str, null, function(err) {
+            if (err)
+                reject(err);
+            else
+                resolve(null);
+        });
+    });
+}
+
 function isNumber(number) {
-	return !isNaN(parseInt(number, 10));
+    return !isNaN(parseInt(number, 10));
 }
 
 function noop() {}
 
 function handleExecResponse(method, pinNumber, callback) {
-	return function(err, stdout, stderr) {
-		if (err) {
-			console.error("Error when trying to", method, "pin", pinNumber);
-			console.error(stderr);
-			callback(err);
-		} else {
-			callback();
-		}
-	}
+    return function(err, stdout, stderr) {
+        if (err) {
+            console.error("Error when trying to", method, "pin", pinNumber);
+            console.error(stderr);
+            callback(err);
+        } else {
+            callback();
+        }
+    }
 }
 
 function sanitizePinNumber(pinNumber) {
-	if (!isNumber(pinNumber) || !isNumber(pinMapping[pinNumber])) {
-		throw new Error("Pin number isn't valid");
-	}
+    if (!isNumber(pinNumber) || !isNumber(pinMapping[pinNumber])) {
+        throw new Error("Pin number isn't valid");
+    }
 
-	return parseInt(pinNumber, 10);
+    return parseInt(pinNumber, 10);
 }
 
 function sanitizeDirection(direction) {
-	direction = (direction || "").toLowerCase().trim();
-	if (direction === "in" || direction === "input") {
-		return "in";
-	} else if (direction === "out" || direction === "output" || !direction) {
-		return "out";
-	} else {
-		throw new Error("Direction must be 'input' or 'output'");
-	}
+    direction = (direction || "").toLowerCase().trim();
+    if (direction === "in" || direction === "input") {
+        return "in";
+    } else if (direction === "out" || direction === "output" || !direction) {
+        return "out";
+    } else {
+        throw new Error("Direction must be 'input' or 'output'");
+    }
 }
 
 function sanitizeOptions(options) {
-	var sanitized = {};
+    var sanitized = {};
 
-	options.split(" ").forEach(function(token) {
-		if (token == "in" || token == "input") {
-			sanitized.direction = "in";
-		}
+    options.split(" ").forEach(function(token) {
+        if (token == "in" || token == "input") {
+            sanitized.direction = "in";
+        }
 
-		if (token == "pullup" || token == "up") {
-			sanitized.pull = "pullup";
-		}
+        if (token == "pullup" || token == "up") {
+            sanitized.pull = "pullup";
+        }
 
-		if (token == "pulldown" || token == "down") {
-			sanitized.pull = "pulldown";
-		}
-	});
+        if (token == "pulldown" || token == "down") {
+            sanitized.pull = "pulldown";
+        }
+    });
 
-	if (!sanitized.direction) {
-		sanitized.direction = "out";
-	}
+    if (!sanitized.direction) {
+        sanitized.direction = "out";
+    }
 
-	if (!sanitized.pull) {
-		sanitized.pull = "";
-	}
+    if (!sanitized.pull) {
+        sanitized.pull = "";
+    }
 
-	return sanitized;
+    return sanitized;
 }
 
 var gpio = {
-	board: board,
+    board: board,
 
-	open: function(pinNumber, options, callback) {
-		pinNumber = sanitizePinNumber(pinNumber);
+    open: function(pinNumber, options, callback) {
+        pinNumber = sanitizePinNumber(pinNumber);
 
-		if (!callback && typeof options === "function") {
-			callback = options;
-			options = "out";
-		}
+        if (!callback && typeof options === "function") {
+            callback = options;
+            options = "out";
+        }
 
-		options = sanitizeOptions(options);
+        options = sanitizeOptions(options);
 
-		handleExecResponse("open", pinNumber, function(err) {
-			if (err) return (callback || noop)(err);
+        execPromise("echo " + pinMapping[pinNumber] + " > /sys/class/gpio/export")
+        .then(function () {
+            return gpio.setDirection(pinNumber, options.direction, callback);
+        })
+        .catch(function (err) {
+            if (err.toString().search("Device or resource busy") != -1)
+                err = null;
+            return (callback || noop)(err);
+        })
+    },
 
-			gpio.setDirection(pinNumber, options.direction, callback);
-		});
-	},
+    setDirection: function(pinNumber, direction, callback) {
+        pinNumber = sanitizePinNumber(pinNumber);
+        direction = sanitizeDirection(direction);
 
-	setDirection: function(pinNumber, direction, callback) {
-		pinNumber = sanitizePinNumber(pinNumber);
-		direction = sanitizeDirection(direction);
+        fs.writeFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/direction", direction, (callback || noop));
+    },
 
-		fs.writeFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/direction", direction, (callback || noop));
-	},
+    getDirection: function(pinNumber, callback) {
+        pinNumber = sanitizePinNumber(pinNumber);
+        callback = callback || noop;
 
-	getDirection: function(pinNumber, callback) {
-		pinNumber = sanitizePinNumber(pinNumber);
-		callback = callback || noop;
+        fs.readFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/direction", "utf8", function(err, direction) {
+            if (err) return callback(err);
+            callback(null, sanitizeDirection(direction.trim()));
+        });
+    },
 
-		fs.readFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/direction", "utf8", function(err, direction) {
-			if (err) return callback(err);
-			callback(null, sanitizeDirection(direction.trim()));
-		});
-	},
+    close: function(pinNumber, callback) {
+        pinNumber = sanitizePinNumber(pinNumber);
 
-	close: function(pinNumber, callback) {
-		pinNumber = sanitizePinNumber(pinNumber);
+        execPromise("echo " + pinMapping[pinNumber] + " > /sys/class/gpio/unexport")
+        .then(function () {
+            return callback(null)
+        })
+        .catch(function (err) {
+            if (err.toString().search("Device or resource busy") != -1)
+                err = null;
+            return (callback || noop)(err);
+        })
+    },
 
-		handleExecResponse("close", pinNumber, callback || noop);
-	},
+    read: function(pinNumber, callback) {
+        pinNumber = sanitizePinNumber(pinNumber);
 
-	read: function(pinNumber, callback) {
-		pinNumber = sanitizePinNumber(pinNumber);
+        fs.readFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/value", function(err, data) {
+            if (err) return (callback || noop)(err);
 
-		fs.readFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/value", function(err, data) {
-			if (err) return (callback || noop)(err);
+            (callback || noop)(null, parseInt(data, 10));
+        });
+    },
 
-			(callback || noop)(null, parseInt(data, 10));
-		});
-	},
+    write: function(pinNumber, value, callback) {
+        pinNumber = sanitizePinNumber(pinNumber);
 
-	write: function(pinNumber, value, callback) {
-		pinNumber = sanitizePinNumber(pinNumber);
+        value = !!value ? "1" : "0";
 
-		value = !!value ? "1" : "0";
-
-		fs.writeFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/value", value, "utf8", callback);
-	}
+        fs.writeFile(sysFsPath + "/gpio" + pinMapping[pinNumber] + "/value", value, "utf8", callback);
+    }
 };
 
 gpio.export = gpio.open;
