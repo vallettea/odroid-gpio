@@ -33,8 +33,7 @@ Do the following on your raspberry pi:
 
 replaceing $USER your username.
 
-After this, you will need to logout and log back in. [Details](http://quick2wire.com/2012/05/safe-controlled-access-to-gpio-on-the-raspberry-pi/), if you are interested.
-
+After this, you will need to logout and log back in. 
 
 ## Usage
 
